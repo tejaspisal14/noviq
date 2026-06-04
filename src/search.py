@@ -21,6 +21,13 @@ def search_patents(query, k=3):
 
     distances, indices = index.search(query_embedding, k)
 
-    results = df.iloc[indices[0]]
+    results = []
+
+    for i, idx in enumerate(indices[0]):
+        results.append({
+            "title": df.iloc[idx]["title"],
+            "abstract": df.iloc[idx]["abstract"],
+            "distance": float(distances[0][i])
+        })
 
     return results
