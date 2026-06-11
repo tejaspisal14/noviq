@@ -1,33 +1,58 @@
-import pandas as pd
-import faiss
+from src.google_patents import search_google_patents
 from sentence_transformers import SentenceTransformer
+import numpy as np
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = SentenceTransformer(
+    "all-MiniLM-L6-v2"
+)
 
-df = pd.read_csv("data/patents.csv")
+def search_patents(query, k=10):
 
-texts = df["abstract"].tolist()
+    patents = search_google_patents(query)
 
-embeddings = model.encode(texts)
+    if len(patents) == 0:
+        return []
 
-dimension = embeddings.shape[1]
+    query_embedding = model.encode(
+        [query]
+    )[0]
 
-index = faiss.IndexFlatL2(dimension)
+    patent_texts = []
 
-index.add(embeddings)
+    for patent in patents:
 
-def search_patents(query, k=3):
-    query_embedding = model.encode([query])
+        patent_texts.append(
+            patent["title"] + " " +
+            patent["abstract"]
+        )
 
-    distances, indices = index.search(query_embedding, k)
+    patent_embeddings = model.encode(
+        patent_texts
+    )
 
     results = []
 
-    for i, idx in enumerate(indices[0]):
-        results.append({
-            "title": df.iloc[idx]["title"],
-            "abstract": df.iloc[idx]["abstract"],
-            "distance": float(distances[0][i])
-        })
+    for i, patent in enumerate(patents):
 
-    return results
+        similarity = np.dot(
+            query_embedding,
+            patent_embeddings[i]
+        ) / (
+            np.linalg.norm(query_embedding)
+            *
+            np.linalg.norm(
+                patent_embeddings[i]
+            )
+        )
+
+        patent["distance"] = (
+            1 - similarity
+        ) * 100
+
+        results.append(patent)
+
+    results.sort(
+        key=lambda x: x["distance"]
+    )
+
+    return results[:k]
