@@ -16,23 +16,17 @@ driver.get(
 
 time.sleep(5)
 
-links = driver.find_elements(
-    By.TAG_NAME,
-    "a"
+titles = driver.find_elements(
+    By.CSS_SELECTOR,
+    "h3"
 )
 
-for link in links[:100]:
+print("\nPATENT TITLES FOUND:\n")
 
-    text = link.text.strip()
+for title in titles:
+    text = title.text.strip()
 
-    href = link.get_attribute("href")
-
-    if len(text) > 20:
-
-        print("\nTITLE:")
+    if text:
         print(text)
-
-        print("URL:")
-        print(href)
 
 driver.quit()
