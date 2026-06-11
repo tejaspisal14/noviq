@@ -6,15 +6,18 @@ model = SentenceTransformer(
     "all-MiniLM-L6-v2"
 )
 
-def search_patents(query, k=10):
+def search_patents(query, k=15):
 
-    patents = search_google_patents(query)
+    patents = search_google_patents(
+        query
+    )
 
-    if len(patents) == 0:
+    if not patents:
         return []
 
     query_embedding = model.encode(
-        [query]
+        [query],
+        normalize_embeddings=True
     )[0]
 
     patent_texts = []
@@ -22,37 +25,45 @@ def search_patents(query, k=10):
     for patent in patents:
 
         patent_texts.append(
-            patent["title"] + " " +
-            patent["abstract"]
+            f"""
+            {patent['title']}
+            {patent['abstract']}
+            """
         )
 
     patent_embeddings = model.encode(
-        patent_texts
+        patent_texts,
+        normalize_embeddings=True
     )
 
-    results = []
+    ranked_patents = []
 
     for i, patent in enumerate(patents):
 
-        similarity = np.dot(
-            query_embedding,
-            patent_embeddings[i]
-        ) / (
-            np.linalg.norm(query_embedding)
-            *
-            np.linalg.norm(
+        similarity = float(
+            np.dot(
+                query_embedding,
                 patent_embeddings[i]
             )
         )
 
-        patent["distance"] = (
-            1 - similarity
-        ) * 100
+        patent["similarity"] = round(
+            similarity * 100,
+            2
+        )
 
-        results.append(patent)
+        patent["distance"] = round(
+            (1 - similarity) * 100,
+            2
+        )
 
-    results.sort(
-        key=lambda x: x["distance"]
+        ranked_patents.append(
+            patent
+        )
+
+    ranked_patents.sort(
+        key=lambda x: x["similarity"],
+        reverse=True
     )
 
-    return results[:k]
+    return ranked_patents[:k]
