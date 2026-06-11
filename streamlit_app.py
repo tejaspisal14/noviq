@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import networkx as nx
 
 st.set_page_config(
-    page_title="Noviq",
+    page_title="NOVIQ",
     page_icon="N",
     layout="wide"
 )
@@ -60,7 +60,7 @@ st.markdown(
 
 idea = st.text_area(
     "Describe your invention",
-    height=120,
+    height=150,
     placeholder="Example: AI-powered highway safety network that predicts animal crossings using thermal cameras, migration history, and weather data"
 )
 
@@ -73,19 +73,16 @@ if analyze and idea:
 
     progress = st.progress(
         0,
-        text="Building semantic embeddings..."
+        text="Searching Google Patents..."
+    )
+
+    patents = search_patents(
+        idea
     )
 
     progress.progress(
-        25,
-        text="Searching patent database..."
-    )
-
-    patents = search_patents(idea)
-
-    progress.progress(
-        75,
-        text="Generating novelty assessment..."
+        50,
+        text="Running AI novelty analysis..."
     )
 
     analysis = analyze_novelty(
@@ -98,60 +95,32 @@ if analyze and idea:
         text="Analysis complete"
     )
 
-    # --------------------------
-    # Dynamic novelty score
-    # --------------------------
-
-    similarities = []
-
-    for patent in patents:
-
-        similarity = max(
-            0,
-            min(
-                100,
-                100 - patent["distance"]
-            )
-        )
-
-        similarities.append(similarity)
-
-    avg_similarity = (
-        sum(similarities) / len(similarities)
-        if similarities
-        else 50
+    novelty_score = analysis.get(
+        "novelty_score",
+        50
     )
 
-    novelty_score = int(
-        max(
-            5,
-            100 - avg_similarity
-        )
+    risk_level = analysis.get(
+        "risk_level",
+        "Unknown"
     )
-
-    if novelty_score >= 75:
-        risk_level = "Low"
-
-    elif novelty_score >= 45:
-        risk_level = "Medium"
-
-    else:
-        risk_level = "High"
 
     st.divider()
-
-    # --------------------------
-    # Novelty Gauge
-    # --------------------------
 
     gauge_fig = go.Figure(
         go.Indicator(
             mode="gauge+number",
             value=novelty_score,
-            title={"text": "Novelty Score"},
+            title={
+                "text": "Novelty Score"
+            },
             gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "#00D4FF"}
+                "axis": {
+                    "range": [0, 100]
+                },
+                "bar": {
+                    "color": "#00D4FF"
+                }
             }
         )
     )
@@ -168,24 +137,29 @@ if analyze and idea:
 
     st.divider()
 
-    left, right = st.columns([3, 1])
+    left, right = st.columns(
+        [3, 1]
+    )
 
     with left:
 
-        st.header("Top Similar Patents")
+        st.header(
+            "Top Similar Patents"
+        )
 
         for patent in patents:
 
             similarity = max(
                 0,
-                100 - patent["distance"]
+                round(
+                    100 - patent["distance"],
+                    2
+                )
             )
 
             with st.expander(
-                f"{patent['title']} • {similarity:.2f}% Match"
+                f"{patent['title']} • {similarity}% Match"
             ):
-
-                st.write("### Abstract")
 
                 st.write(
                     patent["abstract"]
@@ -209,14 +183,10 @@ if analyze and idea:
         )
 
         st.progress(
-            novelty_score
+            novelty_score / 100
         )
 
     st.divider()
-
-    # --------------------------
-    # Patent Landscape
-    # --------------------------
 
     st.subheader(
         "Patent Landscape"
@@ -249,8 +219,13 @@ if analyze and idea:
 
     for edge in G.edges():
 
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
+        x0, y0 = pos[
+            edge[0]
+        ]
+
+        x1, y1 = pos[
+            edge[1]
+        ]
 
         edge_x.extend(
             [x0, x1, None]
@@ -322,14 +297,45 @@ if analyze and idea:
 
     st.divider()
 
-    # --------------------------
-    # AI Analysis
-    # --------------------------
-
     st.header(
         "NOVIQ Analysis"
     )
 
-    st.markdown(
-        analysis
+    st.subheader(
+        "Potential Overlaps"
+    )
+
+    for item in analysis.get(
+        "overlaps",
+        []
+    ):
+
+        st.write(
+            "•",
+            item
+        )
+
+    st.subheader(
+        "Novel Aspects"
+    )
+
+    for item in analysis.get(
+        "novel_aspects",
+        []
+    ):
+
+        st.write(
+            "•",
+            item
+        )
+
+    st.subheader(
+        "Expert Assessment"
+    )
+
+    st.write(
+        analysis.get(
+            "analysis",
+            "No analysis available."
+        )
     )
