@@ -13,44 +13,90 @@ def analyze_novelty(user_idea, patents):
 
     patent_text = ""
 
-    for patent in patents[:5]:
+    for patent in patents[:10]:
 
         patent_text += f"""
-Title: {patent['title']}
-Abstract: {patent['abstract']}
+Patent Title: {patent.get('title', '')}
 
+Patent ID: {patent.get('patent_id', '')}
+
+Similarity Score: {patent.get('similarity', 0)}%
+
+Patent Abstract:
+{patent.get('abstract', '')}
+
+Patent URL:
+{patent.get('url', '')}
+
+----------------------------------------
 """
 
     prompt = f"""
-You are a senior patent examiner.
+You are a senior patent examiner and IP analyst.
 
-Analyze the invention against the retrieved patents.
+Evaluate the invention against the retrieved patents.
 
-User Idea:
+USER INVENTION:
 {user_idea}
 
-Retrieved Patents:
+RETRIEVED PATENTS:
 {patent_text}
 
-Return ONLY valid JSON in this format:
+Your task:
+
+1. Assess novelty against prior art.
+2. Identify major overlaps.
+3. Identify novel contributions.
+4. Identify the 3 closest prior-art patents.
+5. Extract the key technical contribution of each.
+6. Explain how the user invention differs.
+7. Estimate confidence in your assessment.
+8. Estimate patentability risk.
+
+Return ONLY valid JSON.
 
 {{
     "novelty_score": 0,
+    "confidence": 0,
     "risk_level": "",
     "overlaps": [],
     "novel_aspects": [],
+    "closest_patents": [
+        {{
+            "title": "",
+            "patent_id": "",
+            "similarity": "",
+            "key_claim": "",
+            "difference": "",
+            "url": ""
+        }}
+    ],
     "analysis": ""
 }}
 
-Instructions:
+SCORING GUIDELINES:
 
-1. novelty_score must be between 0 and 100
-2. High novelty = 80-100
-3. Medium novelty = 50-79
-4. Low novelty = 0-49
-5. Evaluate the uniqueness of the COMBINATION of features
-6. Do not return markdown
-7. Do not return explanations outside JSON
+90-100:
+Breakthrough concept with little overlap.
+
+75-89:
+Strong novelty with limited overlap.
+
+50-74:
+Moderate novelty with several related patents.
+
+25-49:
+Heavy overlap with prior art.
+
+0-24:
+Very little novelty.
+
+IMPORTANT:
+
+- Consider the COMBINATION of features.
+- Do not penalize merely because patents exist in the same domain.
+- Focus on technical differentiation.
+- Return JSON ONLY.
 """
 
     try:
@@ -76,14 +122,24 @@ Instructions:
 
             text = text.strip()
 
-        return json.loads(text)
+        result = json.loads(text)
+
+        if "confidence" not in result:
+            result["confidence"] = 70
+
+        if "closest_patents" not in result:
+            result["closest_patents"] = []
+
+        return result
 
     except Exception as e:
 
         return {
             "novelty_score": 50,
+            "confidence": 50,
             "risk_level": "Unknown",
             "overlaps": [],
             "novel_aspects": [],
+            "closest_patents": [],
             "analysis": f"Analysis unavailable: {str(e)}"
         }
